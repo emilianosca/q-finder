@@ -1,17 +1,22 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { ChevronDown, Menu, X } from "lucide-react"
+import { useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown, Menu, Plus, X } from "lucide-react";
 
 export default function Navbar() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen)
-  }
+    setIsMenuOpen(!isMenuOpen);
+  };
 
   return (
     <header className="border-b border-gray-200">
@@ -32,7 +37,10 @@ export default function Navbar() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="text-sm font-medium text-gray-900 p-0 h-auto gap-1">
+                <Button
+                  variant="ghost"
+                  className="text-sm font-medium text-gray-900 p-0 h-auto gap-1"
+                >
                   Features <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -49,7 +57,10 @@ export default function Navbar() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="text-sm font-medium text-gray-900 p-0 h-auto gap-1">
+                <Button
+                  variant="ghost"
+                  className="text-sm font-medium text-gray-900 p-0 h-auto gap-1"
+                >
                   Resources <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -67,15 +78,24 @@ export default function Navbar() {
 
           {/* Desktop Action Buttons */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" className="text-sm font-medium">
-              Log in
-            </Button>
-            <Button className="text-sm font-medium bg-black text-white hover:bg-gray-800">Get started</Button>
+            <Link href="/create">
+              <Button
+                variant="secondary"
+                className="text-sm font-medium bg-black text-white hover:bg-gray-800 flex items-center gap-1"
+              >
+                <Plus className="h-4 w-4" />
+                Crea una pregunta
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <button className="md:hidden" onClick={toggleMenu}>
-            {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {isMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </button>
         </div>
       </div>
@@ -101,13 +121,18 @@ export default function Navbar() {
             </Link>
           </nav>
           <div className="flex flex-col space-y-2 mt-4 pt-4 border-t border-gray-100">
-            <Button variant="ghost" className="text-sm font-medium justify-start">
+            <Button
+              variant="ghost"
+              className="text-sm font-medium justify-start"
+            >
               Log in
             </Button>
-            <Button className="text-sm font-medium bg-black text-white hover:bg-gray-800">Get started</Button>
+            <Button className="text-sm font-medium bg-black text-white hover:bg-gray-800">
+              Get started
+            </Button>
           </div>
         </div>
       )}
     </header>
-  )
+  );
 }
