@@ -1,33 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { Faq } from "@/types/schema";
 
 interface CreateFaqPayload {
   question: string;
   answer: string;
 }
 
-interface FaqResponse {
-  id: number;
-  question: string;
-  answer: string;
-  createdAt: string;
-  updatedAt: string;
-  slug: string;
-}
-
 export async function createFaq(
   payload: CreateFaqPayload
-): Promise<{ success: boolean; data?: FaqResponse; error?: string }> {
-  console.log("Creating FAQ with payload:", payload);
+): Promise<{ success: boolean; data?: Faq; error?: string }> {
 
   try {
-    // const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
     const apiUrl = process.env.API_URL; // → "http://backend:8000"
-
-    console.log("API URL:", apiUrl);
-
+    
     const response = await fetch(`${apiUrl}/api/faq`, {
       method: "POST",
       headers: {
@@ -35,8 +22,6 @@ export async function createFaq(
       },
       body: JSON.stringify(payload),
     });
-
-    console.log("Response from API:", response);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -48,7 +33,6 @@ export async function createFaq(
 
     const data = await response.json();
 
-    console.log("Created FAQ data:", data);
     
     revalidatePath("/");
 
