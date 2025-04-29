@@ -1,8 +1,7 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Home } from "lucide-react";
-import type { Metadata } from "next";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getFaqById, getNextFaq, getPrevFaq } from "@/lib/data";
@@ -54,7 +53,7 @@ export default function FaqPage({ params }: { params: { id: string } }) {
       <div className="mb-8 flex items-center gap-2 text-sm text-gray-500">
         <Link href="/" className="flex items-center gap-1 hover:text-gray-900">
           <Home className="h-4 w-4" />
-          <span>Home</span>
+          <span>Inicio</span>
         </Link>
         <span>/</span>
         <Link href="/" className="hover:text-gray-900">
@@ -84,39 +83,51 @@ export default function FaqPage({ params }: { params: { id: string } }) {
         </Card>
       </article>
 
-      <div className="mt-12 flex flex-col sm:flex-row justify-between gap-4">
+      <div className="mt-12 flex flex-col sm:flex-row justify-between gap-4 w-full">
         {prevFaq ? (
           <Link href={`/faq/${prevFaq.id}`} className="flex-1">
             <Button
               variant="outline"
-              className="w-full flex items-center gap-2 justify-start"
+              className="w-auto flex items-center gap-2 justify-start"
             >
               <ArrowLeft className="h-4 w-4 flex-shrink-0" />
-              <span className="truncate">Previous: {prevFaq.question}</span>
+              <span className="truncate">Anterior: {prevFaq.question}</span>
             </Button>
           </Link>
         ) : (
           <div className="flex-1"></div>
         )}
 
-        {nextFaq ? (
-          <Link href={`/faq/${nextFaq.id}`} className="flex-1">
-            <Button
-              variant="outline"
-              className="w-full flex items-center gap-2 justify-end"
-            >
-              <span className="truncate">Next: {nextFaq.question}</span>
-              <ArrowRight className="h-4 w-4 flex-shrink-0" />
-            </Button>
-          </Link>
-        ) : (
-          <div className="flex-1"></div>
-        )}
+        <div className="justify-end flex ">
+          {nextFaq ? (
+            <Link href={`/faq/${nextFaq.id}`} className="flex-1">
+              <Button
+                variant="outline"
+                className="w-auto flex items-center justify-end"
+              >
+                <span className="truncate">Siguiente: {nextFaq.question}</span>
+                <ArrowRight className="h-4 w-4 flex-shrink-0" />
+              </Button>
+            </Link>
+          ) : (
+            <div className="flex-1"></div>
+          )}
+        </div>
       </div>
 
       <div className="mt-8 text-center">
         <Link href="/">
-          <Button>Back to all FAQs</Button>
+          <Button>
+            No encontraste lo que buscabas? <span className="ml-1">Pregúntanos</span>
+            <ArrowRight className="h-4 w-4 flex-shrink-0 ml-1" />
+            
+          </Button>
+        </Link>
+      </div>
+
+      <div className="mt-8 text-center">
+        <Link href="/">
+          <Button>Regresar a inicio</Button>
         </Link>
       </div>
     </div>
