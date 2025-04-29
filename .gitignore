@@ -69,3 +69,4 @@ archive.zip
 *~
 .*.sw?
 .cache
+api/faq.db
