@@ -1,21 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { Minus, Plus } from "lucide-react";
+import { Minus } from "lucide-react";
 
 interface FaqItemProps {
   question: string;
   answer: string;
-  isOpen: boolean;
-  onToggle: () => void;
+  // isOpen: boolean;
+  // onToggle: () => void;
   id: number;
 }
 
 export default function FaqItem({
   question,
   answer,
-  isOpen,
-  onToggle,
+  // isOpen,
+  // onToggle,
   id,
 }: FaqItemProps) {
   return (
@@ -47,20 +47,13 @@ export default function FaqItem({
               {/* </Link> */}
             </div>
           </div>
-          <button
-            className="ml-4 flex-shrink-0 mt-1"
-            aria-expanded={isOpen}
-            aria-controls={`answer-${question
-              .replace(/\s+/g, "-")
-              .toLowerCase()}`}
-            onClick={onToggle}
-          >
-            {isOpen ? (
-              <Minus className="h-5 w-5 text-gray-500" />
-            ) : (
-              <Plus className="h-5 w-5 text-gray-500" />
-            )}
-          </button>
+          
+        {/* <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              →
+        </span> */}
+
+        <Minus className="h-5 w-5 text-gray-500 hover:" />
+          
         </div>
       </Link>
     </div>
