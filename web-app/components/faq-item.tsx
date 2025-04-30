@@ -23,7 +23,7 @@ export default function FaqItem({
       <Link href={`/faq/${id}`} className="group">
         <div className="flex justify-between items-start">
           <div className="flex-1">
-            <h3 className="text-base font-medium text-gray-900 hover:text-gray-700 transition-colors">
+            <h3 className="text-base font-medium text-gray-900  hover:text-black transition-colors  line-clamp-1">
               {question}
               <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 →
@@ -32,28 +32,19 @@ export default function FaqItem({
 
             <div
               id={`answer-${question.replace(/\s+/g, "-").toLowerCase()}`}
-              // className={`mt-2 text-gray-600 ${isOpen ? "block" : "hidden"}`}
-              className={`mt-2 text-gray-600 `}
+              className={`mt-2 text-gray-600 line-clamp-2  hover:text-black transition-colors `}
             >
               <p className="text-sm">{answer}</p>
               {/* <Link href={`/faq/${id}`} className="text-sm text-gray-500 hover:text-black mt-2 inline-block"> */}
-              <span className="text-sm text-gray-500 hover:text-black mt-2 inline-block">
-                Ver pregunta completa
-                <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  →
-                </span>
-              </span>
-
-              {/* </Link> */}
             </div>
+            <p className="text-sm text-gray-500 hover:text-black mt-2 inline-block">
+              Ver pregunta completa
+              <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                →
+              </span>
+            </p>
           </div>
-          
-        {/* <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              →
-        </span> */}
-
-        <Minus className="h-5 w-5 text-gray-500 hover:" />
-          
+          <Minus className="h-5 w-5 text-gray-500 hover:" />
         </div>
       </Link>
     </div>
