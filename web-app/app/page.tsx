@@ -9,9 +9,7 @@ export default function Home() {
         <FaqHeader />
         <FaqSearch />
       </div>
-      <p className="text-base text-gray-500 hover:text-black mt-16 inline-block">
-        Preguntas más recientes
-      </p>
+  
       <FaqGrid />
     </main>
   );
