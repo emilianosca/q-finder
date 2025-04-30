@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,10 @@ export default function CreateFaqPage() {
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const dialogStartRef = useRef<number>(0);
+  const intervalRef = useRef<NodeJS.Timeout | undefined>();
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
   const MAX_QUESTION_LENGTH = 300;
 
   // Handlers for form fields
@@ -46,34 +50,41 @@ export default function CreateFaqPage() {
     setError(null);
   };
 
-  // Intercept form submit to show preview dialog
+// Intercept form submit to show preview dialog
   const openPreview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim()) return setError("Question is required");
     if (!answer.trim()) return setError("Answer is required");
     setError(null);
+
     setProgress(0);
+    setIsConfirmed(false);
     setIsDialogOpen(true);
   };
 
-  // When dialog opens, start 4s timer & progress bar
   useEffect(() => {
     if (!isDialogOpen) return;
-    const start = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - start;
+    dialogStartRef.current = Date.now();
+    intervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - dialogStartRef.current;
       setProgress(Math.min(100, (elapsed / 4000) * 100));
     }, 100);
-    const timeout = setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setIsConfirmed(true);
     }, 4000);
     return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
+      clearInterval(intervalRef.current);
+      clearTimeout(timeoutRef.current);
     };
   }, [isDialogOpen]);
 
-  // If confirmed (after 4s), perform the real submit
+  const handleConfirm = () => {
+    clearInterval(intervalRef.current);
+    clearTimeout(timeoutRef.current);
+    setProgress(100);
+    setIsConfirmed(true);
+  };
+
   useEffect(() => {
     if (!isConfirmed) return;
     setIsSubmitting(true);
@@ -103,6 +114,8 @@ export default function CreateFaqPage() {
     setIsDialogOpen(false);
     setProgress(0);
     setIsConfirmed(false);
+    clearInterval(intervalRef.current);
+    clearTimeout(timeoutRef.current);
   };
 
   return (
@@ -146,7 +159,6 @@ export default function CreateFaqPage() {
             </div>
           </div>
 
-          {/* Answer field */}
           <label className="text-sm text-gray-500">
             Respuesta <span className="text-red-500">*</span>
           </label>
@@ -162,7 +174,6 @@ export default function CreateFaqPage() {
             </CardContent>
           </Card>
 
-          {/* Submit button now opens dialog */}
           <div className="flex justify-end gap-4">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
@@ -178,14 +189,13 @@ export default function CreateFaqPage() {
         </form>
       </main>
 
-      {/* Preview & Confirm Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Vista previa de FAQ</DialogTitle>
             <DialogDescription>
-              Se enviará esta pregunta después de 4 segundos. Haz clic en
-              Cancelar para modificar.
+              Se enviará esta pregunta después de 4 segundos, o puedes
+              confirmarla inmediatamente.
             </DialogDescription>
           </DialogHeader>
 
@@ -198,7 +208,6 @@ export default function CreateFaqPage() {
             <p className="mt-1">{answer}</p>
           </div>
 
-          {/* Progress bar filling over 4 seconds */}
           <Progress value={progress} max={100} className="w-full mb-4" />
 
           <DialogFooter>
@@ -209,8 +218,15 @@ export default function CreateFaqPage() {
             >
               Cancelar
             </Button>
-            <Button > 
-                Confirmar y enviar
+            <Button onClick={handleConfirm} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                "Confirmar y enviar"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -218,3 +234,4 @@ export default function CreateFaqPage() {
     </div>
   );
 }
+
