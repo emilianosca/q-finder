@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   seed:
     build:
@@ -8,68 +6,30 @@ services:
     volumes:
       - ./api:/app
     working_dir: /app
-    command: ["python", "-m", "app.seed"]
-    networks:
-      - qfinder-network
-    profiles:
-      - dev
+    command: python -m app.seed
+
   backend:
     build:
       context: ./api
-      target: dev   # <-- here it wil override to 'prod' when needed
+      target: dev
     volumes:
       - ./api:/app
     environment:
       - DATABASE_URL=sqlite:///./faq.db
     ports:
       - "8000:8000"
-    networks:
-      - qfinder-network
-    profiles:
-      - dev      
+    depends_on:
+      - seed
+
   frontend:
     build:
       context: ./web-app
-      target: dev  # <-- Same here, it will override to prod when needed
+      target: dev
     volumes:
       - ./web-app:/app
-    ports:
-      - "3000:3000"
     environment:
       - API_URL=http://backend:8000
-    depends_on:
-      - backend
-    networks:
-      - qfinder-network
-    profiles:
-      - dev
-
-  backend-prod:
-    build:
-      context: ./api
-      target: prod
-    ports:
-      - "8000:8000"
-    networks:
-      - qfinder-network
-    profiles:
-      - prod
-
-  frontend-prod:
-    build:
-      context: ./web-app
-      target: prod
     ports:
       - "3000:3000"
-    environment:
-      - API_URL=https://your-production-backend.com
     depends_on:
-      - backend-prod
-    networks:
-      - qfinder-network
-    profiles:
-      - prod
-
-networks:
-  qfinder-network:
-    driver: bridge
+      - backend
