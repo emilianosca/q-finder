@@ -27,6 +27,7 @@ services:
       target: dev
     volumes:
       - ./web-app:/app
+      - /app/node_modules
     environment:
       - API_URL=http://backend:8000
     ports:
