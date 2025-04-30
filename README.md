@@ -52,7 +52,7 @@ UI
 Clona y ejecuta así:
 
 ```bash
-git clone <url-del-repo>
+git clone https://github.com/emilianosca/q-finder.git
 cd q-finder
 docker compose up --build
 ```
