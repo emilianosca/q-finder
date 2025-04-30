@@ -1,86 +1,109 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-
-// import {
-//   Select,
-//   SelectContent,
-//   SelectItem,
-//   SelectTrigger,
-//   SelectValue,
-// } from "@/components/ui/select";
-import { createFaq } from "@/actions/new_faq";
-import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+
+import { createFaq } from "@/actions/new_faq";
 
 export default function CreateFaqPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // dialog & timing state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const MAX_QUESTION_LENGTH = 300;
+
+  // Handlers for form fields
   const handleQuestionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuestion(e.target.value);
     setError(null);
   };
-
   const handleAnswerChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setAnswer(e.target.value);
     setError(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Intercept form submit to show preview dialog
+  const openPreview = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Basic validation
-    if (!question.trim()) {
-      setError("Question is required");
-      return;
-    }
-
-    if (!answer.trim()) {
-      setError("Answer is required");
-      return;
-    }
-
-    setIsSubmitting(true);
+    if (!question.trim()) return setError("Question is required");
+    if (!answer.trim()) return setError("Answer is required");
     setError(null);
-
-    try {
-      const result = await createFaq({
-        question: question.trim(),
-        answer: answer.trim(),
-      });
-
-      if (result.success) {
-        toast({
-          title: "FAQ created successfully",
-          description: "Your FAQ has been published and is now available.",
-        });
-        router.push("/");
-      } else {
-        setError(result.error || "Failed to create FAQ");
-      }
-    } catch (err) {
-      setError("An unexpected error occurred");
-      console.error(err);
-    } finally {
-      setIsSubmitting(false);
-    }
+    setProgress(0);
+    setIsDialogOpen(true);
   };
 
-  const MAX_QUESTION_LENGTH = 300;
+  // When dialog opens, start 4s timer & progress bar
+  useEffect(() => {
+    if (!isDialogOpen) return;
+    const start = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start;
+      setProgress(Math.min(100, (elapsed / 4000) * 100));
+    }, 100);
+    const timeout = setTimeout(() => {
+      setIsConfirmed(true);
+    }, 4000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [isDialogOpen]);
+
+  // If confirmed (after 4s), perform the real submit
+  useEffect(() => {
+    if (!isConfirmed) return;
+    setIsSubmitting(true);
+    createFaq({ question: question.trim(), answer: answer.trim() })
+      .then((result) => {
+        if (result.success) {
+          toast({
+            title: "FAQ created successfully",
+            description: "Your FAQ has been published.",
+          });
+          router.push("/");
+        } else {
+          setError(result.error || "Failed to create FAQ");
+        }
+      })
+      .catch(() => {
+        setError("An unexpected error occurred");
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+        setIsDialogOpen(false);
+        setIsConfirmed(false);
+      });
+  }, [isConfirmed, question, answer, router, toast]);
+
+  const handleCancel = () => {
+    setIsDialogOpen(false);
+    setProgress(0);
+    setIsConfirmed(false);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -98,85 +121,100 @@ export default function CreateFaqPage() {
           </Alert>
         )}
 
-        <Tabs defaultValue="basic" className="mb-6">
-          <TabsList className="grid grid-cols-2 mb-8">
-            <TabsTrigger value="basic">Edita tu pregunta</TabsTrigger>
-            <TabsTrigger value="preview">Preview de tu pregunta</TabsTrigger>
-          </TabsList>
+        <form onSubmit={openPreview}>
+          <div className="">
+            <label className="text-sm text-gray-500">
+              Pregunta <span className="text-red-500">*</span> (máx. de 300
+              caracteres)
+            </label>
+            <Input
+              placeholder="Ingresa tu pregunta"
+              className="text-lg py-6 px-4 border-gray-200 rounded-lg mt-3"
+              value={question}
+              onChange={handleQuestionChange}
+              maxLength={MAX_QUESTION_LENGTH}
+              required
+            />
+            <div
+              className={`text-sm w-full flex justify-end mt-3 ${
+                question.length > MAX_QUESTION_LENGTH * 0.9
+                  ? "text-red-500"
+                  : "text-gray-400"
+              }`}
+            >
+              {question.length}/{MAX_QUESTION_LENGTH}
+            </div>
+          </div>
 
-          <TabsContent value="basic">
-            <form onSubmit={handleSubmit}>
-              <div className="mb-6">
-                <div>
-                  <label className="text-sm text-gray-500 my-4">
-                    Pregunta
-                    <span className="text-red-500 space-x-0.5">*</span>
-                    (máx. de 300 caracteres)
-                  </label>
-                  <Input
-                    placeholder="Ingresa tu pregunta"
-                    className="text-lg py-6 px-4 border-gray-200 rounded-lg mt-3"
-                    value={question}
-                    onChange={handleQuestionChange}
-                    maxLength={MAX_QUESTION_LENGTH}
-                    required
-                  />
-                  <div
-                    className={`text-sm w-full flex justify-end mt-3 ${
-                      question.length > MAX_QUESTION_LENGTH * 0.9
-                        ? "text-red-500"
-                        : "text-gray-400"
-                    }`}
-                  >
-                    {question.length}/{MAX_QUESTION_LENGTH}
-                  </div>
-                </div>
-              </div>
+          {/* Answer field */}
+          <label className="text-sm text-gray-500">
+            Respuesta <span className="text-red-500">*</span>
+          </label>
+          <Card className="mb-6 border-gray-200 mt-4">
+            <CardContent className="p-0">
+              <Textarea
+                placeholder="Ingresa tu respuesta"
+                className="min-h-[300px] resize-none border-0 focus-visible:ring-0"
+                value={answer}
+                onChange={handleAnswerChange}
+                required
+              />
+            </CardContent>
+          </Card>
 
-              <label className="text-sm text-gray-500 my-4">
-                Respuesta * (requerida)
-              </label>
-              <Card className="mb-6 border-gray-200 mt-4">
-                <CardContent className="p-0">
-                  <Textarea
-                    placeholder="Ingresa tu respuesta"
-                    className="min-h-[300px] border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none"
-                    value={answer}
-                    onChange={handleAnswerChange}
-                    required
-                  />
-                </CardContent>
-              </Card>
-
-              <div className="flex justify-end gap-4">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Posteando tu pregunta...
-                    </>
-                  ) : (
-                    "Crear pregunta"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="preview">
-            <Card>
-              <CardContent className="pt-6">
-                <h2 className="text-xl font-medium mb-4">
-                  {question || "Your question will appear here"}
-                </h2>
-                <div className="prose">
-                  <p>{answer || "Your answer will appear here"}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          {/* Submit button now opens dialog */}
+          <div className="flex justify-end gap-4">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Posteando tu pregunta...
+                </>
+              ) : (
+                "Crear pregunta"
+              )}
+            </Button>
+          </div>
+        </form>
       </main>
+
+      {/* Preview & Confirm Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Vista previa de FAQ</DialogTitle>
+            <DialogDescription>
+              Se enviará esta pregunta después de 4 segundos. Haz clic en
+              Cancelar para modificar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mb-4">
+            <h3 className="font-semibold">Pregunta</h3>
+            <p className="mt-1">{question}</p>
+          </div>
+          <div className="mb-4">
+            <h3 className="font-semibold">Respuesta</h3>
+            <p className="mt-1">{answer}</p>
+          </div>
+
+          {/* Progress bar filling over 4 seconds */}
+          <Progress value={progress} max={100} className="w-full mb-4" />
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button > 
+                Confirmar y enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
