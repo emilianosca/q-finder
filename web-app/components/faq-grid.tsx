@@ -27,6 +27,25 @@ export default async function FaqGrid() {
   const faqs: Faq[] = await getFaqs();
 
   return (
+    <>  
+      {/* if faqs is null display null, else display a text */}
+      <div className="text-start w-full flex flex-col items-start justify-start">
+      {faqs.length === 0 ? (
+        <div className="text-center text-gray-500">
+          <p>
+            No hay preguntas frecuentes disponibles en este momento.
+          </p>
+        </div>
+      ) : (
+        <div className="text-center text-gray-500">
+          <p>
+            Preguntas frecuentes
+          </p>
+        </div>
+      )}
+      </div>
+
+      {/* if faqs is different than null, display a text */}
     <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-12 gap-y-0 mt-6">
       {faqs.map((item) => (
         <FaqItem
@@ -39,5 +58,6 @@ export default async function FaqGrid() {
         />
       ))}
     </div>
+    </>
   );
 }
