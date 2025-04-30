@@ -9,7 +9,7 @@ export default function Home() {
         <FaqHeader />
         <FaqSearch />
       </div>
-  
+
       <FaqGrid />
     </main>
   );
