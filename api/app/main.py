@@ -2,168 +2,160 @@
 
 import os
 from datetime import datetime
-
-from fastapi import FastAPI, HTTPException, Path, Query
-from fastapi.middleware.cors import CORSMiddleware  
-from pydantic import BaseModel
 from typing import List
+from fastapi import FastAPI, HTTPException, Path, Query, Depends 
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from sqlalchemy.orm import Session 
 
 from .db import SessionLocal, FaqModel
 from .search import find_most_similar
 
+#  basic API metadata (good practice)
+app = FastAPI(
+    title="Q-Finder FAQ API",
+    description="API for managing and searching FAQs using vector similarity.",
+    version="1.0.0",
+)
 
+# === Repo setup
 
-app = FastAPI()
-
-# ─── repo setup 
-# ─── allowed origins 
+#  allowed origins
 origins = [
-    "http://localhost:3000",            # frontend en dev
-    "https://emilianosc...?.com",            # prod
+    "http://localhost:3000", 
+    
+    # todo! not ready for prod, use env vars! like: 
+    # os.getenv("FRONTEND_URL", "http://localhost:3000") # Example using env var
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,              
-    # allow_origins=["*"],              # all origins
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],               
-    allow_headers=["*"],                # Content-Type, Authorizatio etc
+    allow_methods=["*"], # in prod specify methods (GET, POST) 
+    allow_headers=["*"], # in prod specify headers (Content-Type, Authorization)
 )
 
 
-# ─── Schemas 
-class FaqCreate(BaseModel):
+# === Schemas
+class FaqBase(BaseModel): 
     question: str
     answer:   str
 
-class FaqRead(FaqCreate):
+class FaqCreate(FaqBase): # Inherits question/answer
+    pass 
+
+class FaqRead(FaqBase): # Inherits question/answer
     id:        int
-    createdAt: datetime
-    updatedAt: datetime
+    created_at: datetime 
+    created_at: datetime
     slug:      str
 
     class Config:
-        orm_mode = True
+        from_attributes = True 
 
 
-# ─── Helpers 
-def make_slug(text: str) -> str:
-    return (
-        text.lower()
-            .strip()
-            .replace(" ", "-")
-            .replace("?", "")
-            .replace(".", "")
-    )
-
-
-# ─── POST /api/faq 
-@app.post("/api/faq", response_model=FaqRead)
-def create_faq(payload: FaqCreate):
+# === Dependency for DB Session ─
+def get_db():
+    """FastAPI dependency to manage database sessions."""
     db = SessionLocal()
-    slug = make_slug(payload.question)
-
-    if db.query(FaqModel).filter_by(slug=slug).first():
+    try:
+        yield db
+    finally:
         db.close()
-        raise HTTPException(400, "FAQ with this slug already exists")
 
-    new = FaqModel(
-        question=payload.question,
-        answer=payload.answer,
+# === Helpers
+def make_slug(text: str) -> str:
+    import re
+    text = text.lower().strip()
+    text = re.sub(r'[\s\.\?]+', '-', text) # Replace spaces, dots, q-marks with dash
+    text = re.sub(r'-+', '-', text)       # Collapse multiple dashes
+    text = text.strip('-')                # Remove leading/trailing dashes
+    return text
+
+
+# === CRUD Layer
+def create_faq_db(db: Session, faq_data: FaqCreate) -> FaqModel:
+    """Creates a new FAQ entry in the database."""
+    slug = make_slug(faq_data.question)
+    existing_faq = db.query(FaqModel).filter_by(slug=slug).first()
+    if existing_faq:
+        raise HTTPException(status_code=400, detail="FAQ with this slug already exists")
+
+    new_faq = FaqModel(
+        question=faq_data.question,
+        answer=faq_data.answer,
         slug=slug
     )
-    db.add(new)
+    db.add(new_faq)
     db.commit()
-    db.refresh(new)
-    db.close()
+    db.refresh(new_faq)
+    return new_faq
 
-    return FaqRead(
-        id=new.id,
-        question=new.question,
-        answer=new.answer,
-        createdAt=new.created_at,
-        updatedAt=new.updated_at,
-        slug=new.slug
-    )
+def get_faq_by_id_db(db: Session, faq_id: int) -> FaqModel | None:
+    """Retrieves a single FAQ by its ID."""
+    return db.query(FaqModel).get(faq_id)
+
+def get_all_faqs_db(db: Session, limit: int, randomize: bool) -> List[FaqModel]:
+    """Retrieves a list of FAQs, optionally randomized."""
+    query = db.query(FaqModel)
+    if randomize:
+        from sqlalchemy.sql import func
+        query = query.order_by(func.random())
+    else:
+        query = query.order_by(FaqModel.created_at.desc())
+    return query.limit(limit).all()
+
+# === API Endpoints 
 
 
-# ─── GET /api/search 
+@app.post("/api/faq", response_model=FaqRead, status_code=201)
+def create_faq_endpoint(payload: FaqCreate, db: Session = Depends(get_db)):
+    """
+    Create a new FAQ entry and return the created FAQ.
+    """
+    new_faq = create_faq_db(db, payload)
+    return new_faq
+
+
 @app.get("/api/search", response_model=List[FaqRead])
-def search_faq(
+def search_faq_endpoint(
     query: str = Query(..., description="Text to search FAQs for"),
-    limit: int = Query(5, ge=1, le=20, description="Max number of results")
+    limit: int = Query(5, ge=1, le=20, description="Max number of results"),
+    db: Session = Depends(get_db) 
 ):
     """
     Return up to `limit` FAQs most similar to the given query.
+    Returns an empty list if no relevant FAQs are found above the threshold.
     """
-    results = find_most_similar(query, top_n=limit)
-    if not results:
-        # 404 if no FAQs at all (optional—could return empty list)
-        raise HTTPException(status_code=404, detail="No FAQs available")
-    # Convert ORM objects to Pydantic models
-    return [
-        FaqRead(
-            id=f.id,
-            question=f.question,
-            answer=f.answer,
-            createdAt=f.created_at,
-            updatedAt=f.updated_at,
-            slug=f.slug,
-        )
-        for f in results
-    ]
+    results = find_most_similar(db, query, top_n=limit) #
+    return results 
 
-# --- Get /faq/{faq_id} -- To get a specific FAQ by ID
-@app.get("/api/faqs/{faq_id}", response_model=FaqRead)
-def get_faq(
-    faq_id: int = Path(..., ge=1, description="ID of the FAQ to retrieve"),
+
+@app.get("/api/faqs/{id}", response_model=FaqRead)
+def get_faq_by_id_endpoint(
+    id: int = Path(..., ge=1, description="ID of the FAQ to retrieve"),
+    db: Session = Depends(get_db) # Inject DB session
 ):
     """
     Fetch one FAQ by its integer ID.
     """
-    db = SessionLocal()
-    faq = db.query(FaqModel).get(faq_id)
-    db.close()
-
+    # faq = db.query(FaqModel).get(faq_id) # Old way
+    faq = get_faq_by_id_db(db, id) # Using CRUD function
     if not faq:
         raise HTTPException(status_code=404, detail="FAQ not found")
+    return faq
 
-    return FaqRead(
-        id=faq.id,
-        question=faq.question,
-        answer=faq.answer,
-        createdAt=faq.created_at,
-        updatedAt=faq.updated_at,
-        slug=faq.slug,
-    )
 
-# get all faqs
-@app.get("/api/faqs", response_model=list[FaqRead])
-def get_faqs(
+@app.get("/api/faqs", response_model=List[FaqRead])
+def get_faqs_endpoint(
     limit: int = Query(20, ge=1, le=100, description="Max number of FAQs to return"),
-    randomize: bool = Query(True, description="Shuffle the pool before slicing")
+    randomize: bool = Query(True, description="Shuffle the pool before slicing"),
+    db: Session = Depends(get_db) # Inject DB session
 ):
     """
-    Fetch all FAQs.
+    Fetch a list of FAQs, optionally randomized.
     """
-    db = SessionLocal()
-    q = db.query(FaqModel)
-    if randomize:
-        q = q.order_by(func.random())
-    else:
-        q = q.order_by(FaqModel.created_at.desc())
-    faqs = q.limit(limit).all()
-    db.close()
-
-    return [
-        FaqRead(
-            id=faq.id,
-            question=faq.question,
-            answer=faq.answer,
-            createdAt=faq.created_at,
-            updatedAt=faq.updated_at,
-            slug=faq.slug,
-        )
-        for faq in faqs
-    ]
+    # faqs = db.query(FaqModel) ... # Old way
+    faqs = get_all_faqs_db(db, limit, randomize) # Using CRUD function
+    return faqs
