@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useRef } from 'react';
-import { useQueryState } from 'nuqs';
-import useSWR from 'swr';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Search, PlusCircle, Loader2, X } from 'lucide-react';
-import Link from 'next/link';
-import type { Faq } from '@/types/schema';
-import { API_BASE_URL } from '@/lib/api';
+import React, { useEffect, useState, useRef } from "react";
+import { useQueryState } from "nuqs";
+import useSWR from "swr";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search, PlusCircle, Loader2, X } from "lucide-react";
+import Link from "next/link";
+import type { Faq } from "@/types/schema";
+import { API_BASE_URL } from "@/lib/api";
 
 // SWR Fetcher
 const fetchFaqs = async (url: string): Promise<Faq[]> => {
@@ -19,8 +19,8 @@ const fetchFaqs = async (url: string): Promise<Faq[]> => {
   }
   if (res.status === 204) return [];
   const data = await res.json().catch((e) => {
-    console.error('Failed to parse API response:', e);
-    throw new Error('Invalid API response format');
+    console.error("Failed to parse API response:", e);
+    throw new Error("Invalid API response format");
   });
   return Array.isArray(data) ? data : [];
 };
@@ -34,27 +34,31 @@ const FaqItemSkeleton = () => (
 );
 
 export default function FaqSearch() {
-  const [searchQuery, setSearchQuery] = useQueryState('query', {
-    defaultValue: '',
-    history: 'replace',
+  const [searchQuery, setSearchQuery] = useQueryState("query", {
+    defaultValue: "",
+    history: "replace",
     shallow: false,
   });
-  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery || '');
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevIsValidating = useRef(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Construct the API URL from env-configured backend base URL
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const apiUrlBase = API_BASE_URL;
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setDebouncedQuery(searchQuery || '');
+      setDebouncedQuery(searchQuery);
     }, 300);
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
   const swrKey =
-    debouncedQuery && apiUrlBase
+    isMounted && debouncedQuery && apiUrlBase
       ? `${apiUrlBase}/api/search?query=${encodeURIComponent(debouncedQuery)}`
       : null;
 
@@ -62,56 +66,53 @@ export default function FaqSearch() {
     data: faqs,
     error,
     isValidating,
-  } = useSWR<Faq[]>(
-    swrKey,
-    fetchFaqs,
-    {
-      revalidateOnFocus: false,
-      shouldRetryOnError: true,
-      errorRetryCount: 5,
-      errorRetryInterval: 3000,
-      revalidateOnMount: Boolean(swrKey),
-      // Retry logic if the backend isn't up yet
-      onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
-        // don't retry if no active query
-        if (!debouncedQuery) return;
-        // limit retries
-        if (retryCount >= 5) return;
-        // retry after interval
-        setTimeout(() => revalidate({ retryCount: retryCount + 1 }), 3000);
-      },
-      keepPreviousData: true,
-    }
-  );
+  } = useSWR<Faq[]>(swrKey, fetchFaqs, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: true,
+    errorRetryCount: 5,
+    errorRetryInterval: 3000,
+    revalidateOnMount: Boolean(swrKey),
+    onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
+      if (!debouncedQuery) return;
+      if (retryCount >= 5) return;
+      setTimeout(() => revalidate({ retryCount: retryCount + 1 }), 3000);
+    },
+    keepPreviousData: true,
+  });
 
-  // Autofocus logic after loading
   useEffect(() => {
+    if (!isMounted) return;
+
     if (prevIsValidating.current && !isValidating) {
       if (inputRef.current && document.activeElement !== inputRef.current) {
-        if (debouncedQuery) inputRef.current.focus();
+        if (debouncedQuery) {
+           inputRef.current.focus();
+        }
       }
     }
     prevIsValidating.current = isValidating;
-  }, [isValidating, debouncedQuery]);
+  }, [isValidating, debouncedQuery, isMounted]);
 
   const hasSearchQuery = Boolean(searchQuery);
   const hasDebouncedQuery = Boolean(debouncedQuery);
-  const showLoading = isValidating && hasDebouncedQuery;
+  const showLoading = isMounted && isValidating && hasDebouncedQuery;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
 
   const handleClearSearch = () => {
-    setSearchQuery('');
+    setSearchQuery("");
     inputRef.current?.focus();
   };
 
   const showNoResults =
-    !showLoading && !error && hasDebouncedQuery && faqs?.length === 0;
+    isMounted && !showLoading && !error && hasDebouncedQuery && faqs?.length === 0;
+  const showInitialPlaceholder = isMounted && !showLoading && !error && !hasDebouncedQuery;
+
 
   if (!apiUrlBase) {
-    console.error('FATAL: API_BASE_URL is not defined.');
+    console.error("FATAL: API_BASE_URL is not defined.");
     return <p>No hay URL definida para la API</p>;
   }
 
@@ -124,7 +125,7 @@ export default function FaqSearch() {
           type="search"
           placeholder="Busca en las preguntas frecuentes..."
           className={`pl-10 pr-4 py-5 rounded-md border-gray-200 bg-white/80 shadow-sm w-full transition-all duration-150 ${
-            showLoading ? 'opacity-70 pr-10' : 'pr-4'
+            showLoading ? "opacity-70 pr-10" : "pr-4"
           }`}
           value={searchQuery}
           onChange={handleSearchChange}
@@ -134,7 +135,7 @@ export default function FaqSearch() {
         />
         {showLoading ? (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-gray-400 z-10" />
-        ) : hasSearchQuery ? (
+        ) : isMounted && hasSearchQuery ? (
           <button
             type="button"
             onClick={handleClearSearch}
@@ -155,34 +156,39 @@ export default function FaqSearch() {
           </div>
         )}
 
-        {error && !showLoading && (
+        {isMounted && error && !showLoading && (
           <div className="text-red-600 mt-4 p-4 bg-red-50 border border-red-200 rounded-md text-center">
             <p className="font-medium">Ups, hubo un error al buscar.</p>
-            {process.env.NODE_ENV === 'development' && (
+            {process.env.NODE_ENV === "development" && (
               <p className="text-sm mt-1">Detalle: {error.message}</p>
             )}
             <p className="text-sm mt-1">Intenta de nuevo más tarde.</p>
           </div>
         )}
 
-        {!showLoading && !error && hasDebouncedQuery && faqs && faqs.length > 0 && (
-          <div className="space-y-4">
-            {faqs.map((faq) => (
-              <Link
-                key={faq.id}
-                href={`/faq/${faq.id}`}
-                className="block bg-white p-4 rounded-md border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors duration-150 group"
-              >
-                <h2 className="text-base font-semibold text-gray-800 group-hover:text-blue-600">
-                  {faq.question}
-                </h2>
-                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                  {faq.answer}
-                </p>
-              </Link>
-            ))}
-          </div>
-        )}
+        {isMounted &&
+          !showLoading &&
+          !error &&
+          hasDebouncedQuery &&
+          faqs &&
+          faqs.length > 0 && (
+            <div className="space-y-4">
+              {faqs.map((faq) => (
+                <Link
+                  key={faq.id}
+                  href={`/faq/${faq.id}`}
+                  className="block bg-white p-4 rounded-md border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors duration-150 group"
+                >
+                  <h2 className="text-base font-semibold text-gray-800 group-hover:text-blue-600">
+                    {faq.question}
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                    {faq.answer}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
 
         {showNoResults && (
           <div className="text-center mt-6 p-6 border-dashed border-gray-300 rounded-md">
@@ -198,7 +204,7 @@ export default function FaqSearch() {
           </div>
         )}
 
-        {!showLoading && !error && !hasDebouncedQuery && (
+        {showInitialPlaceholder && (
           <div className="text-center mt-6 p-6 text-gray-400">
             Escribe algo para buscar en las preguntas frecuentes.
           </div>
@@ -207,4 +213,3 @@ export default function FaqSearch() {
     </div>
   );
 }
-// This component is used to search FAQs and display the results.
