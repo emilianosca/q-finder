@@ -48,7 +48,7 @@ class FaqCreate(FaqBase): # Inherits question/answer
 class FaqRead(FaqBase): # Inherits question/answer
     id:        int
     created_at: datetime 
-    created_at: datetime
+    updated_at: datetime
     slug:      str
 
     class Config:
