@@ -7,7 +7,7 @@ export default function FaqHeader() {
         </span>
       </div>
       <h1 className="text-4xl md:text-6xl font-serif font-medium tracking-tight">
-        <span className="font-normal">Frequently</span>
+        <span className="font-normal">Frequently</span>{" "}
         <br className="md:hidden" />
         <span className="font-normal">Asked</span>{" "}
         <span className="italic">Questions</span>
