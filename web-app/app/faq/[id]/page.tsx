@@ -47,13 +47,27 @@ export async function generateMetadata({
   try {
     faq = await getFaqById(params.id);
   } catch {
-    // notFound metadata
+       // notFound 
+    return {
+      title: "No se encontró la FAQ",
+      description: "La FAQ solicitada no se pudo encontrar.",
+      openGraph: {
+        title: "FAQ No Encontrada",
+        description: "La FAQ solicitada no se pudo encontrar.",
+        type: "article",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "FAQ No Encontrada",
+        description: "La FAQ solicitada no se pudo encontrar.",
+      },
+    };
   }
 
   if (!faq) {
     return {
-      title: "FAQ Not Found",
-      description: "The requested FAQ could not be found.",
+      title: "No se encontró la FAQ",
+      description: "La FAQ solicitada no se pudo encontrar.",
     };
   }
 
@@ -74,9 +88,7 @@ export async function generateMetadata({
   };
 }
 
-// The actual page component
 export default async function FaqPage({ params }: { params: { id: string } }) {
-  // Main FAQ
   let faq: Faq;
   try {
     faq = await getFaqById(params.id);
@@ -89,9 +101,9 @@ export default async function FaqPage({ params }: { params: { id: string } }) {
   const nextFaq = await getNextFaq(Number(params.id));
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl flex flex-col min-h-[calc(100vh-20vh)]">
       {/* Breadcrumbs */}
-      <div className="mb-8 flex items-center gap-2 text-sm text-gray-500">
+      <div className="mb-4 flex items-center gap-2 text-sm text-gray-500">
         <Link href="/" className="flex items-center gap-1 hover:text-gray-900">
           <Home className="h-4 w-4" />
           <span>Inicio</span>
@@ -101,59 +113,67 @@ export default async function FaqPage({ params }: { params: { id: string } }) {
           {faq.question}
         </span>
       </div>
-
       {/* Question & Answer */}
-      <article className="mb-12">
-        <header className="bg-[url('/grid-pattern.svg')] bg-repeat bg-[length:20px_20px] py-8 px-4 md:px-8 rounded-lg mb-8">
+        <article className="mb-8">
+        <header className="bg-[url('/grid-pattern.svg')] bg-repeat bg-[length:20px_20px] py-8 px-4 md:px-8 rounded-t-lg">
           <h1 className="text-3xl md:text-4xl font-serif font-medium tracking-tight">
             {faq.question}
           </h1>
         </header>
-        <Card className="border-gray-200">
-          <CardContent className="pt-6">
-            <div className="prose prose-gray max-w-none">
-              <p className="text-gray-700 text-lg leading-relaxed">
+
+        {/* Fixed-height card */}
+        <Card className="border-gray-200 rounded-b-lg overflow-hidden h-64">
+          <CardContent className="p-4 overflow-y-auto">
+            <div className="prose prose-gray max-w-none whitespace-pre-wrap">
+              <h2 className="text-gray-700 text-lg leading-relaxed">
                 {faq.answer}
-              </p>
+              </h2>
             </div>
           </CardContent>
         </Card>
       </article>
 
       {/* Prev / Next Navigation */}
-      <div className="mt-12 flex flex-col sm:flex-row justify-between gap-4 w-full">
-        {prevFaq ? (
-          <Link href={`/faq/${prevFaq.id}`} className="flex-1">
-            <Button variant="outline" className="flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              <span>Anterior: {prevFaq.question}</span>
-            </Button>
-          </Link>
-        ) : (
-          <div className="flex-1" />
-        )}
-        <div className="flex-1 flex justify-end">
-          {nextFaq ? (
-            <Link href={`/faq/${nextFaq.id}`} className="flex-1">
+      <div className="mt-auto">
+        <div className="grid grid-cols-2 gap-4">
+          {prevFaq ? (
+            <Link href={`/faq/${prevFaq.id}`}>
               <Button
                 variant="outline"
-                className="flex items-center gap-2 justify-end"
+                className="w-full h-12 flex items-center justify-start space-x-2 px-3"
               >
-                <span>Siguiente: {nextFaq.question}</span>
+                <ArrowLeft className="h-4 w-4" />
+                <span className="line-clamp-1">
+                  Anterior: {prevFaq.question}
+                </span>
+              </Button>
+            </Link>
+          ) : (
+            <div />
+          )}
+
+          {nextFaq ? (
+            <Link href={`/faq/${nextFaq.id}`}>
+              <Button
+                variant="outline"
+                className="w-full h-12 flex items-center justify-end space-x-2 px-3"
+              >
+                <span className="line-clamp-1">
+                  Siguiente: {nextFaq.question}
+                </span>
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           ) : (
-            <div className="flex-1" />
+            <div />
           )}
         </div>
-      </div>
 
-      {/* Call to Action */}
-      <div className="mt-8 text-center">
-        <Link href="/">
-          <Button>Regresar a inicio</Button>
-        </Link>
+        <div className="mt-4 flex justify-center">
+          <Link href="/">
+            <Button size="sm">Regresar a inicio</Button>
+          </Link>
+        </div>
       </div>
     </div>
   );
