@@ -44,7 +44,7 @@ export default function FaqSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const prevIsValidating = useRef(false);
 
-  const apiUrlBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const apiUrlBase = "http://localhost:8000";
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -73,7 +73,6 @@ export default function FaqSearch() {
     if (prevIsValidating.current && !isValidating) {
       if (inputRef.current && document.activeElement !== inputRef.current) {
         if (debouncedQuery) {
-          console.log("Restoring focus to search input");
           inputRef.current.focus();
         }
       }

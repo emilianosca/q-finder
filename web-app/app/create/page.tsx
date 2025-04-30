@@ -81,16 +81,16 @@ export default function CreateFaqPage() {
       .then((result) => {
         if (result.success) {
           toast({
-            title: "FAQ created successfully",
-            description: "Your FAQ has been published.",
+            title: "Pregunta creada",
+            description: "Tu pregunta ha sido creada con éxito.",
           });
           router.push("/");
         } else {
-          setError(result.error || "Failed to create FAQ");
+          setError(result.error || "Ups! Algo salió mal");
         }
       })
       .catch(() => {
-        setError("An unexpected error occurred");
+        setError("Error al crear la pregunta");
       })
       .finally(() => {
         setIsSubmitting(false);

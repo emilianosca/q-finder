@@ -1,5 +1,4 @@
 import FaqItem from "./faq-item";
-// import { faqData } from "@/lib/data";
 import type { Faq } from "@/types/schema";
 
 

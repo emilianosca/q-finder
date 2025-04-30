@@ -5,16 +5,25 @@ import { ArrowLeft, ArrowRight, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Faq } from "@/types/schema";
+import { FRONTEND_NEXT_BASE_URL, BACKEND_API_BASE_URL } from "@/lib/api";
 
 // Fetch a single FAQ by ID
-async function getFaqById(id: string): Promise<Faq> {
-  const apiUrl = process.env.API_URL || "http://backend:8000";
-  const res = await fetch(`${apiUrl}/api/faqs/${id}`, { cache: "no-store" });
+async function getFaqById(id: string): Promise<Faq | null> {
+
+  const res = await fetch(`${BACKEND_API_BASE_URL}/api/faqs/${id}`, {});
+
+  if (res.status === 404) {
+    return notFound(); // Handle 404 by returning null
+  }
+
   if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(
-      `Error fetching FAQ: ${errorData.detail || res.statusText}`
+    const errorData = await res.json().catch(() => ({}));
+    console.error(
+      `Error fetching FAQ ${id}: ${errorData?.detail || res.statusText} (${
+        res.status
+      })`
     );
+    throw new Error(`Failed to fetch FAQ ${id}`);
   }
   return res.json();
 }
@@ -36,8 +45,23 @@ async function getNextFaq(currentId: number): Promise<Faq | null> {
     return null;
   }
 }
+// Metadata Generation
 
-// Metadata generation
+// standard robots config
+const faqRobotsConfig: Metadata["robots"] = {
+  index: true,
+  follow: true,
+  nocache: false, // caching allowed
+  googleBot: {
+    index: true,
+    follow: true,
+    // noimageindex: false, // no images in this case
+    // "max-video-preview": -1, // no videos im this case
+    // "max-snippet": -1, // no snippets in this case
+    // "max-image-preview": "large", // no images in this case
+  },
+};
+
 export async function generateMetadata({
   params,
 }: {
@@ -46,63 +70,78 @@ export async function generateMetadata({
   let faq: Faq | null = null;
   try {
     faq = await getFaqById(params.id);
-  } catch {
-       // notFound 
+  } catch (error) {
+    console.error(
+      `Metadata generation failed for FAQ ${params.id} due to fetch error:`,
+      error
+    );
     return {
-      title: "No se encontró la FAQ",
-      description: "La FAQ solicitada no se pudo encontrar.",
-      openGraph: {
-        title: "FAQ No Encontrada",
-        description: "La FAQ solicitada no se pudo encontrar.",
-        type: "article",
-      },
-      twitter: {
-        card: "summary_large_image",
-        title: "FAQ No Encontrada",
-        description: "La FAQ solicitada no se pudo encontrar.",
-      },
+      title: "Error",
+      description: "No se pudo cargar esta pregunta frecuente.",
+      robots: faqRobotsConfig,
     };
   }
 
   if (!faq) {
     return {
-      title: "No se encontró la FAQ",
-      description: "La FAQ solicitada no se pudo encontrar.",
+      title: "FAQ No Encontrada",
+      description: "La pregunta frecuente solicitada no existe.",
+      robots: faqRobotsConfig,
     };
   }
 
+  const pageUrl = `${FRONTEND_NEXT_BASE_URL}/faq/${faq.id}`;
+
+  const description =
+    faq.answer.substring(0, 160).replace(/\s+/g, " ").trim() +
+    (faq.answer.length > 160 ? "..." : "");
+
   return {
-    title: `${faq.question} | Q FINDER FAQ`,
-    description: faq.answer.substring(0, 155) + "...",
+    title: faq.question,
+    description: description,
+    robots: faqRobotsConfig,
+    alternates: {
+      canonical: pageUrl, // canonical URL
+    },
     openGraph: {
       title: faq.question,
-      description: faq.answer.substring(0, 155) + "...",
+      description: description,
+      url: pageUrl,
       type: "article",
-      url: `https://qfinder.com/faq/${faq.id}`,
+      publishedTime: faq.created_at,
+      modifiedTime: faq.updated_at,
     },
     twitter: {
-      card: "summary_large_image",
+      card: "summary",
       title: faq.question,
-      description: faq.answer.substring(0, 155) + "...",
+      description: description,
     },
   };
 }
 
 export default async function FaqPage({ params }: { params: { id: string } }) {
-  let faq: Faq;
+  let faq: Faq | null;
   try {
     faq = await getFaqById(params.id);
-  } catch {
+  } catch (error) {
+    console.error("Error rendering FaqPage:", error);
+    throw error;
+  }
+
+  if (!faq) {
     notFound();
   }
 
-  // Prev/Next
-  const prevFaq = await getPrevFaq(Number(params.id));
-  const nextFaq = await getNextFaq(Number(params.id));
+  const [prevFaq, nextFaq] = await Promise.all([
+    getPrevFaq(Number(faq.id)),
+    getNextFaq(Number(faq.id)),
+  ]).catch((error) => {
+    console.error("Error fetching prev/next FAQs:", error);
+    return [null, null];
+  });
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl flex flex-col min-h-[calc(100vh-20vh)]">
-      {/* Breadcrumbs */}
       <div className="mb-4 flex items-center gap-2 text-sm text-gray-500">
         <Link href="/" className="flex items-center gap-1 hover:text-gray-900">
           <Home className="h-4 w-4" />
@@ -113,28 +152,25 @@ export default async function FaqPage({ params }: { params: { id: string } }) {
           {faq.question}
         </span>
       </div>
-      {/* Question & Answer */}
-        <article className="mb-8">
+
+      <article className="mb-8">
         <header className="bg-[url('/grid-pattern.svg')] bg-repeat bg-[length:20px_20px] py-8 px-4 md:px-8 rounded-t-lg">
           <h1 className="text-3xl md:text-4xl font-serif font-medium tracking-tight">
             {faq.question}
           </h1>
         </header>
 
-        {/* Fixed-height card */}
         <Card className="border-gray-200 rounded-b-lg overflow-hidden h-64">
           <CardContent className="p-4 overflow-y-auto">
             <div className="prose prose-gray max-w-none whitespace-pre-wrap">
-              <h2 className="text-gray-700 text-lg leading-relaxed">
-                {faq.answer}
-              </h2>
+              {faq.answer}
             </div>
           </CardContent>
         </Card>
       </article>
 
-      {/* Prev / Next Navigation */}
       <div className="mt-auto">
+        {" "}
         <div className="grid grid-cols-2 gap-4">
           {prevFaq ? (
             <Link href={`/faq/${prevFaq.id}`}>
@@ -168,7 +204,7 @@ export default async function FaqPage({ params }: { params: { id: string } }) {
             <div />
           )}
         </div>
-
+        
         <div className="mt-4 flex justify-center">
           <Link href="/">
             <Button size="sm">Regresar a inicio</Button>
