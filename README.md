@@ -1,6 +1,6 @@
 # Q-Finder | Startup ficticia para buscar FAQs similares utilizando similitud de coseno, Docker, FastAPI y Next.js 14 🔍
 
-Hola 👋, soy Emiliano y este es el prototipo que desarrollé para Q-Finder. Esto fue realizado para una entrevista técnica de [entropia ai](https://www.entropia.ai/home/) 
+Hola 👋, soy Emiliano y este es el prototipo que desarrollé para Q-Finder. Esto fue realizado para una entrevista técnica de [entropia ai](https://www.entropia.ai/) 
 
 El objetivo era crear algo rápido, simple y efectivo que permita registrar FAQs y encontrar respuestas similares basadas en consultas del usuario, utilizando el algoritmo de similitud de coseno
 
